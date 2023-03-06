@@ -1,15 +1,18 @@
 import {Request, Response, NextFunction} from "express";
+import {Op, UniqueConstraintError} from "sequelize";
 import {ICustomeRequest, IJwtPayload} from "../middlewares/authenticate"
 import {compare, genSalt, hash} from "bcrypt";
 import {sign} from "jsonwebtoken";
 import { IUser } from "../models/modelInterfaces";
-import { User } from "../models";
+import User from "../db/models/user";
+// import { User } from "../models";
 import { tryCatch } from "../middlewares";
 import {validateUser} from "../validators";
 import { createSecretKey } from "crypto";
 
 export const getUsers = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
-    res.status(200).json({status: "success", data: User.UserData})
+    let data = await User.findAndCountAll();
+    res.status(200).json({status: "success", data: User.findAll()})
     return;
 })
 
@@ -20,45 +23,56 @@ export const createUser = tryCatch(async (req:Request, res:Response, next:NextFu
         res.status(400).json({status: "fail", data: error.details});
         return;
     }
-    const user = User.UserData.find((user:IUser) => user.username === body.username || user.email === body.email);
-    if (user) {
-        let error;
-        if (user.username === body.username) {
-            error = {
-                "message": "username is in use",
-                "path": [
-                    "username"
-                ],
-                "type": "any.unique",
-                "context": {
-                    "label": "username",
-                    "key": "username"
-                }
-            }
-        } else {
-            error = {
-                "message": "email is in use",
-                "path": [
-                    "email"
-                ],
-                "type": "any.unique",
-                "context": {
-                    "label": "email",
-                    "key": "email"
-                }
-            }
-        }
-        res.status(400).json({status: 'fail', data: error});
+    // const user = await User.findOne({where: {[Op.or]: {username: body.username, email: body.email}}});
+    // if (user) {
+    //     let error;
+    //     if (user.username === body.username) {
+    //         error = {
+    //             "message": "username is in use",
+    //             "path": [
+    //                 "username"
+    //             ],
+    //             "type": "any.unique",
+    //             "context": {
+    //                 "label": "username",
+    //                 "key": "username"
+    //             }
+    //         }
+    //     } else {
+    //         error = {
+    //             "message": "email is in use",
+    //             "path": [
+    //                 "email"
+    //             ],
+    //             "type": "any.unique",
+    //             "context": {
+    //                 "label": "email",
+    //                 "key": "email"
+    //             }
+    //         }
+    //     }
+    //     res.status(400).json({status: 'fail', data: error});
+    //     return;
+    // };
+    try {
+        const newUser = User.build(value);
+        const salt = await genSalt(10);
+        const hashedPassword = await hash(newUser.password, salt);
+        newUser.password = hashedPassword;
+        await newUser.save();
+        const userToSend = {firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, username: newUser.username, profilePic: newUser.profilePic};
+        res.status(201).json({status:'success', data: userToSend});
         return;
-    };
-    const salt = await genSalt(10);
-    const hashedPassword = await hash(value.password, salt);
-    value.password = hashedPassword;
-    const newUser = new User(value);
-    User.UserData.push(newUser);
-    const userToSend = {firstName: newUser.firstName, lastName: newUser.lastName, email: newUser.email, username: newUser.username, profilePic: newUser.profilePic};
-    res.status(201).json({status:'fail', data: userToSend});
-    return;
+    } catch (e:unknown) {
+        if (e instanceof UniqueConstraintError) {
+            let {origin, instance, ...rem} = e.errors[0];
+            rem.message = `${rem.path} is in use`;
+            res.status(400).json({status: 'fail', data: rem});
+            return;
+        }
+        res.send('Error caught of sequelize');
+        return;
+    }
 });
 
 export const login = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
@@ -96,7 +110,7 @@ export const login = tryCatch(async (req:Request, res:Response, next:NextFunctio
         res.status(400).json({status: "fail", data: error});
         return;
     }
-    let user = User.UserData.find((user:IUser) => user.email === body.username || user.username === body.username);
+    let user = await User.findOne({where: {[Op.or]: {username: body.username, email: body.username}}});
     if (!user) {
         const err = {
             "message": "invalid username or password",
@@ -129,7 +143,7 @@ export const login = tryCatch(async (req:Request, res:Response, next:NextFunctio
         return;
     }
     const jwtPayload = {username: user.username, email: user.email}
-    const webToken = sign(jwtPayload, "somesecretkey@#fkdasl#dkdi#", {
+    const webToken = sign(jwtPayload, process.env.JWT_SECRET as string, {
         expiresIn: '1d',
     });
     res.cookie("authToken", webToken, {httpOnly: true});
@@ -140,6 +154,7 @@ export const login = tryCatch(async (req:Request, res:Response, next:NextFunctio
 export const getUser = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
     console.log("running getUser");
     const user = (req as ICustomeRequest).user;
+    // console.log(user instanceof User)
     res.status(200).json({status: "success", data: user})
     return;
 })

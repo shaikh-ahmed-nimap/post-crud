@@ -1,5 +1,3 @@
-import dotenv from "dotenv";
-dotenv.config();
 import express, {Request, Response} from 'express';
 import cookieParser from "cookie-parser";
 const app = express();
@@ -16,4 +14,4 @@ app.get('/', (req:Request, res:Response) => {
     res.send("<h1>hello world!!</h1>");
 });
 
-module.exports = app;
+export default app;

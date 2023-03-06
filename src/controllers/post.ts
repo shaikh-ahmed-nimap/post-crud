@@ -1,31 +1,38 @@
 import {NextFunction, Request, Response} from "express";
 import {tryCatch} from "../middlewares";
-import { Post } from "../models";
+import Post from "../db/models/post"
+import User from "../db/models/user"
 import { IPost } from "../models/modelInterfaces";
+import {ICustomeRequest} from "../middlewares/authenticate";
 import {validatePost} from "../validators";
 
 export const getPosts = tryCatch(async(req:Request, res:Response) => {
-        res.json({status: 'ok', data: Post.PostData});
+    const posts = await Post.findAndCountAll({include: {
+        model: User,
+        attributes: {exclude: ['password']}
+    }});
+        res.json({status: 'ok', data: posts});
         return;
 });
 
 export const createPost = tryCatch(async (req:Request, res:Response) => {
-    const body:IPost = req.body;
+    const body = req.body;
+    const user = (req as ICustomeRequest).user;
     const {error, value} = validatePost(body)
     if (error) {
         res.status(400).send(error.details);
         return;
     }
-    const post = new Post(value.title, value.description);
-    // console.log(post);
-    Post.PostData.push(post);
+    const post = Post.build(value);
+    post.ownerId = user.userId;
+    await post.save();
     res.status(201).json({status: 'ok', data: post});
     return;
 });
 
 export const getSinglePost = tryCatch(async (req: Request, res:Response) => {
     const {slug} = req.params;
-    const post = Post.PostData.find((post) => slug === post.slug);
+    const post = await Post.findOne({where: {slug}});
     if (!post) {
         res.status(404).json({status: 'fail', data: 'post not found'});
         return;
@@ -36,7 +43,7 @@ export const getSinglePost = tryCatch(async (req: Request, res:Response) => {
 
 export const updatePost = tryCatch(async (req:Request, res:Response) => {
     const {slug} = req.params;
-    const post = Post.PostData.find((post) => post.slug === slug);
+    const post = await Post.findOne({where: {slug}});
      if (!post) {
         res.status(400).json({status: "fail", data: "post not found"});
         return;
@@ -56,12 +63,12 @@ export const updatePost = tryCatch(async (req:Request, res:Response) => {
 export const deletePost = tryCatch(async (req:Request, res:Response) => {
     const {slug} = req.params;
     console.log(slug)
-    const post = Post.PostData.find((post:IPost) => post.slug === slug);
+    const post = await Post.findOne({where: {slug}});;
     if (!post) {
         res.status(404).json({status: "fail", data: "post not found"});
         return;
     }
-    Post.PostData = Post.PostData.filter((post:IPost) => post.slug !== slug);
+    // Post.PostData = Post.PostData.filter((post:IPost) => post.slug !== slug);
     res.status(200).json({status: "success", data: post});
     return;
 });
