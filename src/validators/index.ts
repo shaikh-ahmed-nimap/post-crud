@@ -1,4 +1,4 @@
 import validatePost from "./postSchema";
-import validateUser from "./userSchema";
+import validateUser, {userPasswordChangeValidation} from "./userSchema";
 
-export {validatePost, validateUser};
+export {validatePost, validateUser, userPasswordChangeValidation};

@@ -7,8 +7,11 @@ import { IUser } from "../models/modelInterfaces";
 import User from "../db/models/user";
 // import { User } from "../models";
 import { tryCatch } from "../middlewares";
-import {validateUser} from "../validators";
-import { createSecretKey } from "crypto";
+import {validateUser, userPasswordChangeValidation} from "../validators";
+import {createValidationErr} from "../helper/validationError";
+import sendMail from "../helper/sendMail";
+
+import crypto from "crypto";
 
 export const getUsers = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
     let data = await User.findAndCountAll();
@@ -17,7 +20,7 @@ export const getUsers = tryCatch(async (req:Request, res:Response, next:NextFunc
 })
 
 export const createUser = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
-    const body:IUser = req.body;
+    const body:typeof User = req.body;
     const {error, value} = validateUser(body);
     if (error) {
         res.status(400).json({status: "fail", data: error.details});
@@ -155,12 +158,105 @@ export const getUser = tryCatch(async (req:Request, res:Response, next:NextFunct
     console.log("running getUser");
     const user = (req as ICustomeRequest).user;
     // console.log(user instanceof User)
-    res.status(200).json({status: "success", data: user})
+    // const posts = await user.getPosts();
+    res.status(200).json({status: "success", data: {user}})
     return;
 })
 
 export const logout = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
     res.clearCookie('authToken');
     res.status(200).send("logout success");
+    return;
+});
+
+export const changeUserPassword = tryCatch(async (req:Request, res:Response) => {
+    const {prevPassword, newPassword} = req.body;
+    const {error, value} = userPasswordChangeValidation(req.body);
+    if (error) {
+        res.status(400).json({status: 'fail', data: {error}});
+        return;
+    };
+    const user = (req as ICustomeRequest).user;
+    console.log(user.password);
+    const dbUser = await User.findOne({where: {userId: user.userId}});
+    if (!dbUser) {
+        res.status(404).json({message: 'user not found'})
+        return;
+    }
+    const isMatch = await dbUser.validatePassword(prevPassword, dbUser.password);
+    if (!isMatch) {
+        const err = {
+            "message": "invalid password",
+            "path": [
+                "invalid"
+            ],
+            "type": "any.invalid",
+            "context": {
+                "label": "invalid",
+                "key": "invalid"
+            }
+        } 
+        res.status(400).json({status: 'fail', data: {error: err} });
+        return;
+    };
+    dbUser.password = await User.hashPassword(newPassword);
+    dbUser.save();
+    res.status(200).json({status: 'success', data: dbUser});
+    return;
+});
+
+export const sendToken = tryCatch(async (req: Request, res:Response) => {
+    let {email} = req.body;
+    if (!email) {
+        let error = createValidationErr("email is required", "email")
+        res.status(400).json({status: "fail", data: error});
+        return;
+    };
+    const user = await User.findOne({where: {email: email}});
+    if (!user) {
+        res.status(404).json({status: 'fail', data: {message: "user not found"}});
+        return;
+    };
+    const resetToken = await user.createResetToken();
+    const resetURL = `${req.protocol}://${req.get('host')}/api/user/reset-password/${resetToken}`;
+    const mailSent = await sendMail({text: 'Click this url for next step', html:`<a href="#">${resetURL}</a>`}, 'Password reset request', user.email);
+    if (!mailSent) {
+        res.status(500).send('something went wrong');
+        return;
+    }
+    res.status(200).json({status: 'success', data: {message: 'Please check your email for next step'}});
+    return;
+})
+
+export const resetPassword = tryCatch(async (req:Request, res:Response) => {
+    const {token} = req.params;
+    if (!token) {
+        res.status(403).json({status: 'fail', data: {message: 'Request denied'}});
+        return;
+    };
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    const user = await User.findOne({where: {resetToken: hashedToken}});
+    console.log(user);
+    if (!user) {
+        res.status(400).json({status: 'fail', data: {message: "Invalid token"}});
+        return;
+    };
+    if (user.resetTokenExpires && user.resetTokenExpires <= Date.now()) {
+        user.resetToken = null;
+        user.resetTokenExpires = null;
+        res.status(400).json({status: 'fail', data: {message: 'Token expired please try again'}});
+        return;
+    };
+    const {newPassword, confPassword} = req.body;
+    if (!newPassword || newPassword !== confPassword) {
+        res.status(400).json({status: 'fail', data: {message: 'Please provide proper credentials'}});
+        return;
+    };
+    const hashedPassword = await User.hashPassword(newPassword);
+    user.password = hashedPassword;
+    user.resetToken = null;
+    user.resetTokenExpires = null;
+    await user.save();
+    res.status(200).json({status: 'success', data: {message: "password reset successfully"}});
     return;
 });

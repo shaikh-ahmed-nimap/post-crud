@@ -30,6 +30,7 @@ const authenticateUser = async (req:Request, res:Response, next: NextFunction) =
         return;
     }
     (req as ICustomeRequest).user = user;
+    
     next();
 };
 

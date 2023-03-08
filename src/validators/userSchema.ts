@@ -12,4 +12,9 @@ const userSchema = Joi.object({
     })
 });
 
+export const userPasswordChangeValidation = validator(Joi.object({
+    prevPassword: Joi.string().required(),
+    newPassword: Joi.string().required().min(6).max(100)
+}))
+
 export default validator(userSchema);

@@ -1,5 +1,7 @@
 import sequelize from "./config";
 
-(async () => {
-    await sequelize.sync();
-})();
+const syncTable = async (opt?: {alter?: boolean, force?: boolean}) => {
+    await sequelize.sync(opt);
+};
+
+export default syncTable;

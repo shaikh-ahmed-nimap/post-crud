@@ -43,6 +43,13 @@ Post.init({
     slug: {
         type: DataTypes.STRING
     },
+    ownerId: {
+        type: DataTypes.INTEGER,
+        references: {
+            model: User,
+            key: "userId"
+        }
+    },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
     deletedAt: DataTypes.DATE,
@@ -50,6 +57,5 @@ Post.init({
     sequelize, modelName: 'Post', paranoid: true
 });
 
-Post.belongsTo(User, {foreignKey: 'ownerId', targetKey: 'userId', as: 'owner'})
 
 export default Post;
