@@ -15,22 +15,24 @@ class Relation extends Model<InferAttributes<Relation>, InferCreationAttributes<
 }
 
 Relation.init({
-    followerId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: 'users',
-            key: 'userId'
-        },
-        allowNull: false
-    },
-    follwingId: {
-        type: DataTypes.INTEGER,
-        references: {
-            model: 'users',
-            key: 'userId'
-        },
-        allowNull: false
-    },
+    // followerId: {
+    //     type: DataTypes.INTEGER,
+    //     primaryKey: true,
+    //     references: {
+    //         model: 'users',
+    //         key: 'userId'
+    //     },
+    //     allowNull: false
+    // },
+    // follwingId: {
+    //     type: DataTypes.INTEGER,
+    //     primaryKey: true,
+    //     references: {
+    //         model: 'users',
+    //         key: 'userId'
+    //     },
+    //     allowNull: false
+    // },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
     deletedAt: DataTypes.DATE

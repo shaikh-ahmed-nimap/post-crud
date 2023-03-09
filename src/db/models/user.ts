@@ -107,7 +107,6 @@ User.hasMany(Post, {sourceKey: 'userId',foreignKey: 'ownerId', as: 'owner', onDe
 Post.belongsTo(User, {as: "owner", foreignKey: 'ownerId', targetKey: 'userId'});
 
 User.belongsToMany(User, {foreignKey: "followerId", through: Relation, as: "followers", targetKey: 'userId'});
-
 User.belongsToMany(User, {foreignKey: "followingId", through: Relation,as: "following", targetKey: 'userId'});
 
 User.prototype.validatePassword = async (password: string, passwordToCompare: string) => {

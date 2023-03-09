@@ -5,7 +5,7 @@ import syncTable from "./db";
 
 (async (port) => {
     try {
-        await syncTable({alter: true});
+        await syncTable();
          app.listen(port, () => {
             console.log(`server port: ${port}`)
          })

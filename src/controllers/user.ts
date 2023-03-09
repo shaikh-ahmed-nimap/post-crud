@@ -185,17 +185,7 @@ export const changeUserPassword = tryCatch(async (req:Request, res:Response) => 
     }
     const isMatch = await dbUser.validatePassword(prevPassword, dbUser.password);
     if (!isMatch) {
-        const err = {
-            "message": "invalid password",
-            "path": [
-                "invalid"
-            ],
-            "type": "any.invalid",
-            "context": {
-                "label": "invalid",
-                "key": "invalid"
-            }
-        } 
+        const err = createValidationErr('invalid password', 'prevPassword')
         res.status(400).json({status: 'fail', data: {error: err} });
         return;
     };
@@ -260,3 +250,8 @@ export const resetPassword = tryCatch(async (req:Request, res:Response) => {
     res.status(200).json({status: 'success', data: {message: "password reset successfully"}});
     return;
 });
+
+export const uploadProfilePic = tryCatch(async (req:Request, res:Response) => {
+    const user = (req as ICustomeRequest).user;
+    const file = req.file;
+})

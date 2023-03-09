@@ -4,6 +4,7 @@ import Post from "../db/models/post"
 import User from "../db/models/user"
 import {ICustomeRequest} from "../middlewares/authenticate";
 import {validatePost} from "../validators";
+import upload from "../multer-config";
 
 export const getPosts = tryCatch(async(req:Request, res:Response) => {
     const posts = await Post.findAndCountAll({include: {
@@ -17,16 +18,22 @@ export const getPosts = tryCatch(async(req:Request, res:Response) => {
 
 export const createPost = tryCatch(async (req:Request, res:Response) => {
     const body = req.body;
+    console.log("request.body", body);
     const user = (req as ICustomeRequest).user;
-    const {error, value} = validatePost(body)
+    
+    const {error, value} = validatePost(body);
     if (error) {
-        res.status(400).send(error.details);
+        res.status(400).json({status: 'fail', data: {errors: error.details}});
         return;
-    }
+    };
+    const file = req.file;
+    console.log("req.file", req.file);
     const post = Post.build(value);
     post.ownerId = user.userId;
     post.slug = (Date.now() + '-' + post.title.split(' ').join('-'));
-    await post.save();
+    const filePath = file ? file.path.split('public')[1] : null;
+    post.image = filePath;
+    // await post.save();
     res.status(201).json({status: 'ok', data: post});
     return;
 });
