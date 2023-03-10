@@ -8,7 +8,6 @@ class Relation extends Model<InferAttributes<Relation>, InferCreationAttributes<
     declare createdAt: CreationOptional<Date>;
     declare updatedAt: CreationOptional<Date>;
     declare deletedAt: CreationOptional<Date>;
-
     declare static associations: {
 
     }

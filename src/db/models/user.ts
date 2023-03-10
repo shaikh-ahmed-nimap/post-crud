@@ -11,7 +11,10 @@ HasManyHasAssociationMixin,
 HasManyHasAssociationsMixin,
 HasManyCountAssociationsMixin,
 HasManyCreateAssociationMixin,
-Association} from "sequelize";
+Association,
+BelongsToManyGetAssociationsMixin,
+BelongsToManyAddAssociationMixin,
+BelongsToManyCountAssociationsMixin} from "sequelize";
 import Post from "./post";
 import Relation from "./relation";
 
@@ -22,13 +25,15 @@ class User extends Model<InferAttributes<User, {omit: 'posts'}>, InferCreationAt
     declare username: string
     declare email: string
     declare password:string
-    declare profilePic?: string
+    declare profilePic: string | null;
     declare createdAt: CreationOptional<Date>
     declare updatedAt: CreationOptional<Date>
     declare deletedAt: CreationOptional<Date>
     declare resetToken: string | null;
     declare resetTokenExpires: number | null;
     declare posts?: NonAttribute<Post[]>;
+    declare followers?: NonAttribute<User[]>;
+    declare following?: NonAttribute<User[]>;
 
     declare getPosts: HasManyGetAssociationsMixin<Post>; // Note the null assertions!
     declare addPost: HasManyAddAssociationMixin<Post, number>;
@@ -41,8 +46,18 @@ class User extends Model<InferAttributes<User, {omit: 'posts'}>, InferCreationAt
     declare countPosts: HasManyCountAssociationsMixin;
     declare createPost: HasManyCreateAssociationMixin<Post, 'ownerId'>;
 
+    declare getFollowers: BelongsToManyGetAssociationsMixin<User>;
+    declare addFollower: BelongsToManyAddAssociationMixin<User, 'followerId'>;
+    declare getFollowing: BelongsToManyGetAssociationsMixin<User>;
+    declare addFollowing: BelongsToManyAddAssociationMixin<User, 'followingId'>;
+    declare countFollowers: BelongsToManyCountAssociationsMixin;
+    declare countFollowing: BelongsToManyCountAssociationsMixin;
+
+
     declare static associations: {
-        posts: Association<User, Post>
+        posts: Association<User, Post>;
+        followers: Association<User, User>;
+        following: Association<User, User>;
     };
     declare validatePassword:NonAttribute<(password: string, passwordToCompare:string) => Promise<boolean>>;
 
@@ -106,8 +121,8 @@ User.init({
 User.hasMany(Post, {sourceKey: 'userId',foreignKey: 'ownerId', as: 'owner', onDelete: 'CASCADE'});
 Post.belongsTo(User, {as: "owner", foreignKey: 'ownerId', targetKey: 'userId'});
 
-User.belongsToMany(User, {foreignKey: "followerId", through: Relation, as: "followers", targetKey: 'userId'});
-User.belongsToMany(User, {foreignKey: "followingId", through: Relation,as: "following", targetKey: 'userId'});
+User.belongsToMany(User, {foreignKey: "followerId", through: Relation, as: "following", targetKey: 'userId'});
+User.belongsToMany(User, {foreignKey: "followingId", through: Relation,as: "followers", targetKey: 'userId'});
 
 User.prototype.validatePassword = async (password: string, passwordToCompare: string) => {
     const isMatch  = await bcrypt.compare(password, passwordToCompare);

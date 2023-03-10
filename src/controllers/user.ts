@@ -5,6 +5,7 @@ import {compare, genSalt, hash} from "bcrypt";
 import {sign} from "jsonwebtoken";
 import { IUser } from "../models/modelInterfaces";
 import User from "../db/models/user";
+import Relation from "../db/models/relation";
 // import { User } from "../models";
 import { tryCatch } from "../middlewares";
 import {validateUser, userPasswordChangeValidation} from "../validators";
@@ -14,8 +15,9 @@ import sendMail from "../helper/sendMail";
 import crypto from "crypto";
 
 export const getUsers = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
+    console.log(req.query)
     let data = await User.findAndCountAll();
-    res.status(200).json({status: "success", data: User.findAll()})
+    res.status(200).json({status: "success", data})
     return;
 })
 
@@ -157,9 +159,11 @@ export const login = tryCatch(async (req:Request, res:Response, next:NextFunctio
 export const getUser = tryCatch(async (req:Request, res:Response, next:NextFunction) => {
     console.log("running getUser");
     const user = (req as ICustomeRequest).user;
+    const followers = await user.countFollowers();
+    const following = await user.countFollowing();
     // console.log(user instanceof User)
     // const posts = await user.getPosts();
-    res.status(200).json({status: "success", data: {user}})
+    res.status(200).json({status: "success", data: {user, followers, following}});
     return;
 })
 
@@ -254,4 +258,23 @@ export const resetPassword = tryCatch(async (req:Request, res:Response) => {
 export const uploadProfilePic = tryCatch(async (req:Request, res:Response) => {
     const user = (req as ICustomeRequest).user;
     const file = req.file;
-})
+    user.profilePic = file ? file.path.split('public')[1] : null;
+    await user.save();
+    res.status(200).json({status: "success", data: {user}})
+});
+
+export const makeFollowRequest = tryCatch(async (req: Request, res: Response) => {
+    const body = req.body;
+   const user = (req as ICustomeRequest).user;
+   const userToFollow = await User.findOne({where: {username: body.username}});
+   if (!userToFollow) {
+        res.status(404).json({status: "fail", data: {error: "user not found"}});
+        return;
+   };
+   const relation = await user.addFollowing(userToFollow);
+   res.status(200).json({status: "fail", data: {relation}});
+   return;
+});
+
+
+
