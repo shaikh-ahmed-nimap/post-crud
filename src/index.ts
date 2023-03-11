@@ -1,7 +1,11 @@
-const app = require('./app');
+import dotenv from "dotenv";
+dotenv.config();
+import app from "./app";
+import syncTable from "./db";
 
-((port) => {
+(async (port) => {
     try {
+        await syncTable();
          app.listen(port, () => {
             console.log(`server port: ${port}`)
          })
