@@ -1,4 +1,4 @@
-import {Request, Response} from "express";
+import {NextFunction, Request, Response} from "express";
 import {tryCatch} from "../middlewares";
 import Post from "../db/models/post"
 import User from "../db/models/user"
@@ -16,19 +16,16 @@ export const getPosts = tryCatch(async(req:Request, res:Response) => {
         return;
 });
 
-export const createPost = tryCatch(async (req:Request, res:Response) => {
-    const body = req.body;
-    console.log("request.body", body);
+export const createPost = tryCatch(async (req:Request, res:Response, next: NextFunction) => {
+        const body = req.body;
     const user = (req as ICustomeRequest).user;
-    
-    const {error, value} = validatePost(body);
-    if (error) {
-        res.status(400).json({status: 'fail', data: {errors: error.details}});
-        return;
-    };
+    // const {error, value} = validatePost(body);
+    // if (error) {
+    //     res.status(400).json({status: 'fail', data: {errors: error.details}});
+    //     return;
+    // };
     const file = req.file;
-    console.log("req.file", req.file);
-    const post = Post.build(value);
+    const post = Post.build(req.body);
     post.ownerId = user.userId;
     post.slug = (Date.now() + '-' + post.title.split(' ').join('-'));
     const filePath = file ? file.path.split('public')[1] : null;

@@ -2,11 +2,17 @@ import multer, { MulterError } from "multer";
 import path from "node:path";
 import fs from "node:fs"
 import { ICustomeRequest } from "../middlewares/authenticate";
+import { validatePost } from "../validators";
 
 const allowedExtensions = ['.png', '.jpg', '.jpeg']
 
 export const storage = multer.diskStorage({
     destination: (req, file, cb) => {
+        const {error, value} = validatePost(req.body);
+        if (error) {
+            cb(error, '');
+            return;
+        };
         const basePath = req.baseUrl.split('/')[2];
         let dest: string = '';
         if (basePath === 'user') {
@@ -23,7 +29,6 @@ export const storage = multer.diskStorage({
     },
     filename: (req, file, cb) => {
         try {
-            console.log('creating filename')
             // const extName = path.extname(file.originalname);
             let nameOfFile = Date.now() + '-' + file.originalname;
             cb(null, nameOfFile)
