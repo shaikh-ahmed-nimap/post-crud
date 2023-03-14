@@ -8,16 +8,19 @@ const allowedExtensions = ['.png', '.jpg', '.jpeg']
 
 export const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const {error, value} = validatePost(req.body);
-        if (error) {
-            cb(error, '');
-            return;
-        };
+        console.log(req.url, file)
         const basePath = req.baseUrl.split('/')[2];
         let dest: string = '';
         if (basePath === 'user') {
             dest = path.resolve(__dirname, '../', 'public', 'images', 'profile-pic', (req as ICustomeRequest).user.username);
         } else if (basePath === 'posts') {
+            const {error, value} = validatePost(req.body);
+            console.log('hitting before error')
+            if (error) {
+                console.log("hitting error")
+                cb(error, '');
+                return;
+            };
             dest = path.resolve(__dirname, '../', 'public', 'images', 'posts', (req as ICustomeRequest).user.username);
         }
         if (!fs.existsSync(dest)) {

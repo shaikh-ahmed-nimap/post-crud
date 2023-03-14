@@ -257,6 +257,7 @@ export const resetPassword = tryCatch(async (req:Request, res:Response) => {
 
 export const uploadProfilePic = tryCatch(async (req:Request, res:Response) => {
     const user = (req as ICustomeRequest).user;
+    console.log('user', req.file);
     const file = req.file;
     user.profilePic = file ? file.path.split('public')[1] : null;
     await user.save();
